@@ -12,15 +12,13 @@ use vst::{
 };
 
 struct Clipper {
-    sample_rate: f32,
-    params: Arc<RawParameters2>,
+    params: Arc<RawParameters>,
 }
 
 impl Plugin for Clipper {
     fn new(host: HostCallback) -> Self {
         Clipper {
-            params: Arc::new(RawParameters2::default(host)),
-            sample_rate: 44100.0,
+            params: Arc::new(RawParameters::default(host)),
         }
     }
 
@@ -35,7 +33,7 @@ impl Plugin for Clipper {
             unique_id: 0x636c6970, // "clip"
             version: 1,
             category: Category::Effect,
-            parameters: ParameterType2::COUNT as i32,
+            parameters: ParameterType::COUNT as i32,
             // Two audio inputs
             inputs: 2,
             // Two channel audio!
@@ -80,10 +78,6 @@ impl Plugin for Clipper {
         }
     }
 
-    fn set_sample_rate(&mut self, rate: f32) {
-        self.sample_rate = rate;
-    }
-
     // The raw parameters exposed to the host
     fn get_parameter_object(&mut self) -> Arc<dyn PluginParameters> {
         Arc::clone(&self.params) as Arc<dyn PluginParameters>
@@ -97,8 +91,8 @@ struct Parameters {
     wet_dry: f32,
 }
 
-impl From<&RawParameters2> for Parameters {
-    fn from(params: &RawParameters2) -> Self {
+impl From<&RawParameters> for Parameters {
+    fn from(params: &RawParameters) -> Self {
         Parameters {
             wet_dry: params.wet_dry.get(),
             clip_level: ease_in_expo(params.clip_level.get()),
@@ -118,7 +112,7 @@ pub fn ease_in_expo(x: f32) -> f32 {
 
 /// The raw parameter values that a host DAW will set and modify.
 /// These are unscaled and are always in the [0.0, 1.0] range
-pub struct RawParameters2 {
+pub struct RawParameters {
     clip_level: AtomicFloat,
     pre_amplify: AtomicFloat,
     post_amplify: AtomicFloat,
@@ -127,8 +121,8 @@ pub struct RawParameters2 {
     pub host: HostCallback,
 }
 
-impl RawParameters2 {
-    pub fn set(&self, value: f32, parameter: ParameterType2) {
+impl RawParameters {
+    pub fn set(&self, value: f32, parameter: ParameterType) {
         // These are needed so Ableton will notice parameter changes in the
         // "Configure" window.
         // TODO: investigate if I should send this only on mouseup/mousedown
@@ -137,13 +131,13 @@ impl RawParameters2 {
         self.host.end_edit(parameter.into());
     }
 
-    pub fn get(&self, parameter: ParameterType2) -> f32 {
+    pub fn get(&self, parameter: ParameterType) -> f32 {
         self.get_ref(parameter).get()
     }
 
     /// Returns a user-facing text output for the given parameter. This is broken
     /// into a tuple consisting of (`value`, `units`)
-    fn get_strings(&self, parameter: ParameterType2) -> (String, String) {
+    fn get_strings(&self, parameter: ParameterType) -> (String, String) {
         let params = Parameters::from(self);
 
         fn make_strings(value: f32, label: &str) -> (String, String) {
@@ -151,16 +145,16 @@ impl RawParameters2 {
         }
 
         match parameter {
-            ParameterType2::PreAmp => make_strings(params.pre_amplify * 100.0, "%"),
-            ParameterType2::ClipLevel => make_strings(params.clip_level, ""),
-            ParameterType2::PostAmp => make_strings(params.post_amplify * 100.0, "%"),
-            ParameterType2::WetDry => make_strings(params.wet_dry * 100.0, "% Wet"),
+            ParameterType::PreAmp => make_strings(params.pre_amplify * 100.0, "%"),
+            ParameterType::ClipLevel => make_strings(params.clip_level, ""),
+            ParameterType::PostAmp => make_strings(params.post_amplify * 100.0, "%"),
+            ParameterType::WetDry => make_strings(params.wet_dry * 100.0, "% Wet"),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ParameterType2 {
+pub enum ParameterType {
     PreAmp,
     ClipLevel,
     PostAmp,
@@ -171,21 +165,21 @@ macro_rules! table {
     ($macro:ident) => {
         $macro! {
         //  RawParameter identifier, ParameterType identifier
-            RawParameters2,          ParameterType2;
-        //  variant                     idx    name            field_name
-            ParameterType2::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0;
-            ParameterType2::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7;
-            ParameterType2::ClipLevel,   2,     "Clip Level",   clip_level,   0.6;
-            ParameterType2::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8;
+            RawParameters,          ParameterType;
+        //  variant                     idx    name            field_name    default
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0;
+            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7;
+            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level,   0.6;
+            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8;
         }
     };
 }
 
-impl ParameterType2 {
+impl ParameterType {
     pub const COUNT: usize = 4;
 }
 
-impl_all! {RawParameters2, ParameterType2, table}
+impl_all! {RawParameters, ParameterType, table}
 
 // Export symbols for main
 vst::plugin_main!(Clipper);
