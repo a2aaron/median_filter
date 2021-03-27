@@ -170,10 +170,10 @@ impl RawParameters {
 
     fn default(host: HostCallback) -> Self {
         RawParameters {
-            clip_level: AtomicFloat::new(0.5),         // All wet
-            pre_amplify: AtomicFloat::new(0.25),       // Clip at 0.5
-            post_amplify: AtomicFloat::new(0.8 / 4.0), // 100%
-            wet_dry: AtomicFloat::new(1.0),            // 80%
+            clip_level: AtomicFloat::new(0.6),   // Clip at 0.06ish
+            pre_amplify: AtomicFloat::new(0.7),  // 200%
+            post_amplify: AtomicFloat::new(0.8), // 100%
+            wet_dry: AtomicFloat::new(1.0),      // 100% wet
             host,
         }
     }
