@@ -86,10 +86,15 @@ dependencies = [
 name = "median-filter"
 version = "0.1.0"
 dependencies = [
+ "common",
  "median",
  "variant_count",
  "vst 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "mini-vst"
+version = "0.1.0"
 
 [[package]]
 name = "num-traits"
