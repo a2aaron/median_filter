@@ -29,11 +29,11 @@ impl Plugin for Clipper {
 
     fn get_info(&self) -> Info {
         Info {
-            name: "Median Filter".to_string(),
+            name: "Clipper".to_string(),
             vendor: "a2aaron".to_string(),
             // Used by hosts to differentiate between plugins.
             // Don't worry much about this now - just fill in a random number.
-            unique_id: 612413,
+            unique_id: 0x636c6970, // "clip"
             version: 1,
             category: Category::Effect,
             parameters: ParameterType::COUNT as i32,
