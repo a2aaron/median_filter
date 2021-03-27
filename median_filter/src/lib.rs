@@ -1,19 +1,18 @@
 #[macro_use]
-extern crate vst;
+extern crate common;
 
 use std::sync::Arc;
 
 use median::heap::Filter;
-use variant_count::VariantCount;
 use vst::{
     api::Supported,
     buffer::AudioBuffer,
+    host::Host,
     plugin::{CanDo, Category, HostCallback, Info, Plugin, PluginParameters},
     util::AtomicFloat,
 };
 
 struct MedianFilter {
-    sample_rate: f32,
     params: Arc<RawParameters>,
     left_filter: Filter<f32>,
     right_filter: Filter<f32>,
@@ -21,12 +20,12 @@ struct MedianFilter {
 }
 
 impl Plugin for MedianFilter {
-    fn new(_: HostCallback) -> Self {
+    fn new(host: HostCallback) -> Self {
         MedianFilter {
-            params: Arc::new(RawParameters {
-                ..Default::default()
-            }),
-            ..Default::default()
+            params: Arc::new(RawParameters::default(host)),
+            left_filter: Filter::new(50),
+            right_filter: Filter::new(50),
+            last_window_size: 50,
         }
     }
 
@@ -45,7 +44,7 @@ impl Plugin for MedianFilter {
             version: 1,
             category: Category::Effect,
             // Subtract one here due to "error" type
-            parameters: (ParameterType::VARIANT_COUNT - 1) as i32,
+            parameters: ParameterType::COUNT as i32,
             // Two audio inputs
             inputs: 2,
             // Two channel audio!
@@ -65,7 +64,8 @@ impl Plugin for MedianFilter {
     // Output audio given the current state of the VST
     fn process(&mut self, buffer: &mut AudioBuffer<f32>) {
         self.reset_if_changed();
-        let dry_wet = self.params.dry_wet.get();
+        let params = Parameters::from(self.params.as_ref());
+        let wet_dry = params.wet_dry;
         let num_samples = buffer.samples();
 
         let (inputs, mut outputs) = buffer.split();
@@ -79,7 +79,7 @@ impl Plugin for MedianFilter {
             } else {
                 0.0
             };
-            left_output[i] = left_input[i] * (1.0 - dry_wet) + out * dry_wet;
+            left_output[i] = left_input[i] * (1.0 - wet_dry) + out * wet_dry;
         }
 
         let right_input = &inputs[1];
@@ -92,29 +92,13 @@ impl Plugin for MedianFilter {
             } else {
                 0.0
             };
-            right_output[i] = right_input[i] * (1.0 - dry_wet) + out * dry_wet;
+            right_output[i] = right_input[i] * (1.0 - wet_dry) + out * wet_dry;
         }
-    }
-
-    fn set_sample_rate(&mut self, rate: f32) {
-        self.sample_rate = rate;
     }
 
     // The raw parameters exposed to the host
     fn get_parameter_object(&mut self) -> Arc<dyn PluginParameters> {
         Arc::clone(&self.params) as Arc<dyn PluginParameters>
-    }
-}
-
-impl Default for MedianFilter {
-    fn default() -> Self {
-        MedianFilter {
-            sample_rate: 44100.0,
-            params: Arc::new(RawParameters::default()),
-            left_filter: Filter::new(100),
-            right_filter: Filter::new(100),
-            last_window_size: 100,
-        }
     }
 }
 
@@ -131,14 +115,46 @@ impl MedianFilter {
 
 struct Parameters {
     window_size: usize,
-    dry_wet: f32,
+    wet_dry: f32,
 }
 
 impl From<&RawParameters> for Parameters {
     fn from(params: &RawParameters) -> Self {
         Parameters {
             window_size: ((params.window_size.get() * 100.0) as usize).max(1),
-            dry_wet: params.dry_wet.get(),
+            wet_dry: params.wet_dry.get(),
+        }
+    }
+}
+
+impl RawParameters {
+    pub fn set(&self, value: f32, parameter: ParameterType) {
+        // These are needed so Ableton will notice parameter changes in the
+        // "Configure" window.
+        // TODO: investigate if I should send this only on mouseup/mousedown
+        self.host.begin_edit(parameter.into());
+        self.get_ref(parameter).set(value);
+        self.host.end_edit(parameter.into());
+    }
+
+    pub fn get(&self, parameter: ParameterType) -> f32 {
+        self.get_ref(parameter).get()
+    }
+
+    /// Returns a user-facing text output for the given parameter. This is broken
+    /// into a tuple consisting of (`value`, `units`)
+    fn get_strings(&self, parameter: ParameterType) -> (String, String) {
+        let params = Parameters::from(self);
+
+        fn make_strings(value: f32, label: &str) -> (String, String) {
+            (format!("{:.2}", value), label.to_string())
+        }
+
+        match parameter {
+            ParameterType::WetDry => make_strings(params.wet_dry * 100.0, "% Wet"),
+            ParameterType::WindowSize => {
+                (format!("{}", params.window_size), " Samples".to_string())
+            }
         }
     }
 }
@@ -147,87 +163,34 @@ impl From<&RawParameters> for Parameters {
 /// These are unscaled and are always in the [0.0, 1.0] range
 pub struct RawParameters {
     window_size: AtomicFloat,
-    dry_wet: AtomicFloat,
-}
-
-impl PluginParameters for RawParameters {
-    fn get_parameter_label(&self, index: i32) -> String {
-        match index.into() {
-            ParameterType::WindowSize => "Samples".to_string(),
-            ParameterType::DryWet => "%".to_string(),
-            ParameterType::Error => "".to_string(),
-        }
-    }
-
-    fn get_parameter_text(&self, index: i32) -> String {
-        let params = Parameters::from(self);
-        match index.into() {
-            ParameterType::WindowSize => format!("{}", params.window_size),
-            ParameterType::DryWet => format!("{:.2}", params.dry_wet * 100.0),
-            ParameterType::Error => "".to_string(),
-        }
-    }
-
-    fn get_parameter_name(&self, index: i32) -> String {
-        match index.into() {
-            ParameterType::WindowSize => "Window Size".to_string(),
-            ParameterType::DryWet => "Dry/Wet Mix".to_string(),
-            ParameterType::Error => "".to_string(),
-        }
-    }
-
-    fn get_parameter(&self, index: i32) -> f32 {
-        match index.into() {
-            ParameterType::WindowSize => self.window_size.get(),
-            ParameterType::DryWet => self.dry_wet.get(),
-            ParameterType::Error => 0.0,
-        }
-    }
-
-    fn set_parameter(&self, index: i32, value: f32) {
-        match index.into() {
-            ParameterType::WindowSize => self.window_size.set(value),
-            ParameterType::DryWet => self.dry_wet.set(value),
-            ParameterType::Error => (),
-        }
-    }
-
-    fn can_be_automated(&self, index: i32) -> bool {
-        ParameterType::from(index) != ParameterType::Error
-    }
-
-    fn string_to_parameter(&self, _index: i32, _text: String) -> bool {
-        false
-    }
-}
-
-impl Default for RawParameters {
-    fn default() -> Self {
-        RawParameters {
-            window_size: AtomicFloat::new(0.5),
-            dry_wet: AtomicFloat::new(0.5),
-        }
-    }
+    wet_dry: AtomicFloat,
+    host: HostCallback,
 }
 
 /// The type of parameter. "Error" is included as a convience type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, VariantCount)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterType {
     WindowSize,
-    DryWet,
-    Error,
+    WetDry,
 }
 
-impl From<i32> for ParameterType {
-    fn from(i: i32) -> Self {
-        use ParameterType::*;
-        match i {
-            0 => WindowSize,
-            1 => DryWet,
-            _ => Error,
+macro_rules! table {
+    ($macro:ident) => {
+        $macro! {
+        //  RawParameter identifier, ParameterType identifier
+            RawParameters,           ParameterType;
+        //  variant                     idx    name            field_name    default
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      0.5;
+            ParameterType::WindowSize,  1,     "Window Size",  window_size,  0.5;
         }
-    }
+    };
 }
+
+impl ParameterType {
+    pub const COUNT: usize = 2;
+}
+
+impl_all! {RawParameters, ParameterType, table}
 
 // Export symbols for main
-plugin_main!(MedianFilter);
+vst::plugin_main!(MedianFilter);
