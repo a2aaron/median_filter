@@ -105,6 +105,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "stutter"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "vst",
+]
+
+[[package]]
 name = "typenum"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
