@@ -127,38 +127,6 @@ impl From<&RawParameters> for Parameters {
     }
 }
 
-impl RawParameters {
-    pub fn set(&self, value: f32, parameter: ParameterType) {
-        // These are needed so Ableton will notice parameter changes in the
-        // "Configure" window.
-        // TODO: investigate if I should send this only on mouseup/mousedown
-        self.host.begin_edit(parameter.into());
-        self.get_ref(parameter).set(value);
-        self.host.end_edit(parameter.into());
-    }
-
-    pub fn get(&self, parameter: ParameterType) -> f32 {
-        self.get_ref(parameter).get()
-    }
-
-    /// Returns a user-facing text output for the given parameter. This is broken
-    /// into a tuple consisting of (`value`, `units`)
-    fn get_strings(&self, parameter: ParameterType) -> (String, String) {
-        let params = Parameters::from(self);
-
-        fn make_strings(value: f32, label: &str) -> (String, String) {
-            (format!("{:.2}", value), label.to_string())
-        }
-
-        match parameter {
-            ParameterType::WetDry => make_strings(params.wet_dry * 100.0, "% Wet"),
-            ParameterType::WindowSize => {
-                (format!("{}", params.window_size), " Samples".to_string())
-            }
-        }
-    }
-}
-
 /// The raw parameter values that a host DAW will set and modify.
 /// These are unscaled and are always in the [0.0, 1.0] range
 pub struct RawParameters {
@@ -167,11 +135,14 @@ pub struct RawParameters {
     host: HostCallback,
 }
 
-/// The type of parameter. "Error" is included as a convience type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterType {
     WindowSize,
     WetDry,
+}
+
+fn make_strings(value: f32, label: &str) -> (String, String) {
+    (format!("{:.2}", value), label.to_string())
 }
 
 macro_rules! table {
@@ -179,9 +150,9 @@ macro_rules! table {
         $macro! {
         //  RawParameter identifier, ParameterType identifier
             RawParameters,           ParameterType;
-        //  variant                     idx    name            field_name    default
-            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      0.5;
-            ParameterType::WindowSize,  1,     "Window Size",  window_size,  0.5;
+        //  variant                     idx    name            field_name    default    strings
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      0.5,       |x: f32| make_strings(x * 100.0, "% Wet");
+            ParameterType::WindowSize,  1,     "Window Size",  window_size,  0.5,       |x: usize| (format!("{}", x), " Samples".to_string());
         }
     };
 }

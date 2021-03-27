@@ -121,38 +121,6 @@ pub struct RawParameters {
     pub host: HostCallback,
 }
 
-impl RawParameters {
-    pub fn set(&self, value: f32, parameter: ParameterType) {
-        // These are needed so Ableton will notice parameter changes in the
-        // "Configure" window.
-        // TODO: investigate if I should send this only on mouseup/mousedown
-        self.host.begin_edit(parameter.into());
-        self.get_ref(parameter).set(value);
-        self.host.end_edit(parameter.into());
-    }
-
-    pub fn get(&self, parameter: ParameterType) -> f32 {
-        self.get_ref(parameter).get()
-    }
-
-    /// Returns a user-facing text output for the given parameter. This is broken
-    /// into a tuple consisting of (`value`, `units`)
-    fn get_strings(&self, parameter: ParameterType) -> (String, String) {
-        let params = Parameters::from(self);
-
-        fn make_strings(value: f32, label: &str) -> (String, String) {
-            (format!("{:.2}", value), label.to_string())
-        }
-
-        match parameter {
-            ParameterType::PreAmp => make_strings(params.pre_amplify * 100.0, "%"),
-            ParameterType::ClipLevel => make_strings(params.clip_level, ""),
-            ParameterType::PostAmp => make_strings(params.post_amplify * 100.0, "%"),
-            ParameterType::WetDry => make_strings(params.wet_dry * 100.0, "% Wet"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterType {
     PreAmp,
@@ -161,16 +129,20 @@ pub enum ParameterType {
     WetDry,
 }
 
+fn make_strings(value: f32, label: &str) -> (String, String) {
+    (format!("{:.2}", value), label.to_string())
+}
+
 macro_rules! table {
     ($macro:ident) => {
         $macro! {
         //  RawParameter identifier, ParameterType identifier
             RawParameters,          ParameterType;
-        //  variant                     idx    name            field_name    default
-            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0;
-            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7;
-            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level,   0.6;
-            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8;
+        //  variant                     idx    name            field_name    default    strings
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0,       |x: f32| make_strings(x * 100.0, "%");
+            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7,       |x: f32| make_strings(x, "");
+            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level,   0.6,       |x: f32| make_strings(x * 100.0, "%");
+            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8,       |x: f32| make_strings(x * 100.0, "% Wet");
         }
     };
 }

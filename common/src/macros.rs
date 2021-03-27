@@ -80,7 +80,8 @@ macro_rules! impl_plugin_parameters {
 
 #[macro_export]
 macro_rules! impl_display {
-     ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $idx:expr, $name:expr, $_:expr, $_default:expr;)*) => {
+     ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl std::fmt::Display for $parameter_type {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
@@ -93,7 +94,8 @@ macro_rules! impl_display {
 
 #[macro_export]
 macro_rules! impl_from_i32 {
-    ($raw_parameters: ident, $parameter_type: ident; $($variant:expr, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:expr, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl std::convert::TryFrom<i32> for $parameter_type {
             type Error = ();
             fn try_from(x: i32) -> Result<Self, Self::Error> {
@@ -108,7 +110,8 @@ macro_rules! impl_from_i32 {
 
 #[macro_export]
 macro_rules! impl_into_i32 {
-    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl std::convert::From<$parameter_type> for i32 {
             fn from(x: $parameter_type) -> i32 {
                 match x {
@@ -121,7 +124,8 @@ macro_rules! impl_into_i32 {
 
 #[macro_export]
 macro_rules! impl_get_ref {
-    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $_:expr, $_name:expr, $field_name:ident, $_default:expr;)*) => {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             fn get_ref(&self, x: $parameter_type) -> &vst::util::AtomicFloat {
                 match x {
@@ -134,7 +138,8 @@ macro_rules! impl_get_ref {
 
 #[macro_export]
 macro_rules! impl_get_default {
-    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $_:expr, $_name:expr, $_field_name:ident, $default:expr;)*) => {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             fn get_default(x: $parameter_type) -> f32 {
                 match x {
@@ -147,7 +152,8 @@ macro_rules! impl_get_default {
 
 #[macro_export]
 macro_rules! impl_default {
-    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $_:expr, $_name:expr, $field_name:ident, $default:expr;)*) => {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             fn default(host: vst::plugin::HostCallback) -> Self {
                 $raw_parameters {
@@ -160,14 +166,53 @@ macro_rules! impl_default {
 }
 
 #[macro_export]
+macro_rules! impl_get_set {
+    ($raw_parameters: ident, $parameter_type: ident) => {
+        impl $raw_parameters {
+            pub fn set(&self, value: f32, parameter: $parameter_type) {
+                // These are needed so Ableton will notice parameter changes in the
+                // "Configure" window.
+                // TODO: investigate if I should send this only on mouseup/mousedown
+                self.host.begin_edit(parameter.into());
+                self.get_ref(parameter).set(value);
+                self.host.end_edit(parameter.into());
+            }
+
+            pub fn get(&self, parameter: $parameter_type) -> f32 {
+                self.get_ref(parameter).get()
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_get_strings {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+        impl $raw_parameters {
+            /// Returns a user-facing text output for the given parameter. This is broken
+            /// into a tuple consisting of (`value`, `units`)
+            fn get_strings(&self, parameter: $parameter_type) -> (String, String) {
+                let params = Parameters::from(self);
+                match parameter {
+                    $($variant => $string(params.$field_name),)*
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! impl_all {
     ($raw_parameters: ident, $parameter_type: ident, $table: ident) => {
         impl_plugin_parameters! {$raw_parameters, $parameter_type}
+        impl_get_set! {$raw_parameters, $parameter_type}
         $table! {impl_from_i32}
         $table! {impl_into_i32}
         $table! {impl_display}
         $table! {impl_get_ref}
         $table! {impl_default}
         $table! {impl_get_default}
+        $table! {impl_get_strings}
     };
 }
