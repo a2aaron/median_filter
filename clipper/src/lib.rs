@@ -179,64 +179,6 @@ impl RawParameters {
     }
 }
 
-impl PluginParameters for RawParameters {
-    fn get_parameter_label(&self, index: i32) -> String {
-        if let Ok(parameter) = ParameterType::try_from(index) {
-            self.get_strings(parameter).1
-        } else {
-            "".to_string()
-        }
-    }
-
-    fn get_parameter_text(&self, index: i32) -> String {
-        if let Ok(parameter) = ParameterType::try_from(index) {
-            self.get_strings(parameter).0
-        } else {
-            "".to_string()
-        }
-    }
-
-    fn get_parameter_name(&self, index: i32) -> String {
-        if let Ok(param) = ParameterType::try_from(index) {
-            param.to_string()
-        } else {
-            "".to_string()
-        }
-    }
-
-    fn get_parameter(&self, index: i32) -> f32 {
-        if let Ok(parameter) = ParameterType::try_from(index) {
-            self.get(parameter)
-        } else {
-            0.0
-        }
-    }
-
-    fn set_parameter(&self, index: i32, value: f32) {
-        if let Ok(parameter) = ParameterType::try_from(index) {
-            // This is needed because some VST hosts, such as Ableton, echo a
-            // parameter change back to the plugin. This causes issues such as
-            // weird knob behavior where the knob "flickers" because the user tries
-            // to change the knob value, but ableton keeps sending back old, echoed
-            // values.
-            #[allow(clippy::float_cmp)]
-            if self.get(parameter) == value {
-                return;
-            }
-
-            self.set(value, parameter);
-        }
-    }
-
-    fn can_be_automated(&self, index: i32) -> bool {
-        ParameterType::try_from(index).is_ok()
-    }
-
-    fn string_to_parameter(&self, _index: i32, _text: String) -> bool {
-        false
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterType {
     PreAmp,
@@ -248,7 +190,7 @@ pub enum ParameterType {
 macro_rules! table {
     ($macro:ident) => {
         $macro! {
-        //  variant                     idx    name
+            //  variant                     idx    name
             ParameterType::WetDry,      0,     "Wet/Dry";
             ParameterType::PreAmp,      1,     "Pre-Amplify";
             ParameterType::ClipLevel,   2,     "Clip Level";
@@ -259,6 +201,79 @@ macro_rules! table {
 
 impl ParameterType {
     pub const COUNT: usize = 4;
+}
+
+/// Implement PluginParameters for `$raw_parameters`. `$parameter_type` must
+/// be an enum which implements `TryFrom<i32>` and `Display`
+/// `$raw_parameters` must implement the following functions
+/// get(&self, $parameter_type) -> f32
+///     returns the normalized f32 value of the given parameter
+/// set(&mut self, $parameter_type, value: f32)
+///     sets the normalized f32 value of the given parameter
+/// get_strings(&self, $parameter_type) -> (String, String)
+///     returns a tuple where the first String is the parameter's name
+///     (ex: "Master Volume") and the second tuple is the parameter's value
+///     (ex: "12 db")
+macro_rules! impl_plugin_parameters {
+    ($raw_parameters: ident, $parameter_type: ident) => {
+        impl PluginParameters for $raw_parameters {
+            fn get_parameter_label(&self, index: i32) -> String {
+                if let Ok(parameter) = $parameter_type::try_from(index) {
+                    self.get_strings(parameter).1
+                } else {
+                    "".to_string()
+                }
+            }
+
+            fn get_parameter_text(&self, index: i32) -> String {
+                if let Ok(parameter) = $parameter_type::try_from(index) {
+                    self.get_strings(parameter).0
+                } else {
+                    "".to_string()
+                }
+            }
+
+            fn get_parameter_name(&self, index: i32) -> String {
+                if let Ok(param) = $parameter_type::try_from(index) {
+                    param.to_string()
+                } else {
+                    "".to_string()
+                }
+            }
+
+            fn get_parameter(&self, index: i32) -> f32 {
+                if let Ok(parameter) = $parameter_type::try_from(index) {
+                    self.get(parameter)
+                } else {
+                    0.0
+                }
+            }
+
+            fn set_parameter(&self, index: i32, value: f32) {
+                if let Ok(parameter) = $parameter_type::try_from(index) {
+                    // This is needed because some VST hosts, such as Ableton, echo a
+                    // parameter change back to the plugin. This causes issues such as
+                    // weird knob behavior where the knob "flickers" because the user tries
+                    // to change the knob value, but ableton keeps sending back old, echoed
+                    // values.
+                    #[allow(clippy::float_cmp)]
+                    if self.get(parameter) == value {
+                        return;
+                    }
+
+                    self.set(value, parameter);
+                }
+            }
+
+            fn can_be_automated(&self, index: i32) -> bool {
+                $parameter_type::try_from(index).is_ok()
+            }
+
+            fn string_to_parameter(&self, _index: i32, _text: String) -> bool {
+                false
+            }
+        }
+    };
 }
 
 macro_rules! impl_display {
@@ -302,6 +317,8 @@ macro_rules! impl_into_i32 {
 table! {impl_from_i32}
 table! {impl_into_i32}
 table! {impl_display}
+
+impl_plugin_parameters! {RawParameters, ParameterType}
 
 // Export symbols for main
 plugin_main!(Clipper);
