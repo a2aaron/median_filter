@@ -1,5 +1,5 @@
 [package]
-name = "median-filter"
+name = "clipper"
 version = "0.1.0"
 authors = ["Aaron Kofsky <aaronko@umich.edu>"]
 edition = "2018"
@@ -7,14 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vst = "0.2.1"
-variant_count = "1.0.0"
-median = "0.3.1"
+
+vst = { git = "https://github.com/RustAudio/vst-rs" }
 
 [lib]
 crate-type = ["cdylib"]
-
-[workspace]
-members = [
-    "clipper",
-]

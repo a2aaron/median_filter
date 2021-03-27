@@ -27,6 +27,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "clipper"
+version = "0.1.0"
+dependencies = [
+ "vst 0.2.1 (git+https://github.com/RustAudio/vst-rs)",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -76,7 +83,7 @@ version = "0.1.0"
 dependencies = [
  "median",
  "variant_count",
- "vst",
+ "vst 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -144,6 +151,18 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "vst"
+version = "0.2.1"
+source = "git+https://github.com/RustAudio/vst-rs#fd8e173b9a7db9a8f924bbed14de99d3210188c1"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libloading",
+ "log",
+ "num-traits",
+]
 
 [[package]]
 name = "vst"
