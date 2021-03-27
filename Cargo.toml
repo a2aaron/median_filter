@@ -8,8 +8,6 @@ edition = "2018"
 
 [dependencies]
 vst = "0.2.1"
-log = "0.4.11"
-simple-logging = "2.0.2"
 variant_count = "1.0.0"
 median = "0.3.1"
 
