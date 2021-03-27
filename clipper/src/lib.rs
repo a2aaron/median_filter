@@ -129,15 +129,6 @@ pub struct RawParameters {
 }
 
 impl RawParameters {
-    pub fn get_ref(&self, parameter: ParameterType) -> &AtomicFloat {
-        match parameter {
-            ParameterType::PreAmp => &self.pre_amplify,
-            ParameterType::ClipLevel => &self.clip_level,
-            ParameterType::PostAmp => &self.post_amplify,
-            ParameterType::WetDry => &self.wet_dry,
-        }
-    }
-
     pub fn set(&self, value: f32, parameter: ParameterType) {
         // These are needed so Ableton will notice parameter changes in the
         // "Configure" window.
@@ -190,11 +181,11 @@ pub enum ParameterType {
 macro_rules! table {
     ($macro:ident) => {
         $macro! {
-            //  variant                     idx    name
-            ParameterType::WetDry,      0,     "Wet/Dry";
-            ParameterType::PreAmp,      1,     "Pre-Amplify";
-            ParameterType::ClipLevel,   2,     "Clip Level";
-            ParameterType::PostAmp,     3,     "Post-Amplify";
+        //  variant                     idx    name            field_name
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry ;
+            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify ;
+            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level ;
+            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify ;
         }
     };
 }
@@ -277,7 +268,7 @@ macro_rules! impl_plugin_parameters {
 }
 
 macro_rules! impl_display {
-     ($($variant:pat, $idx:expr, $name:expr;)*) => {
+     ($($variant:pat, $idx:expr, $name:expr, $_:expr;)*) => {
         impl std::fmt::Display for ParameterType {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
@@ -289,7 +280,7 @@ macro_rules! impl_display {
 }
 
 macro_rules! impl_from_i32 {
-    ($($variant:expr, $idx:expr, $_:expr;)*) => {
+    ($($variant:expr, $idx:expr, $_name:expr, $_field_name:expr;)*) => {
         impl TryFrom<i32> for ParameterType {
             type Error = ();
             fn try_from(x: i32) -> Result<Self, Self::Error> {
@@ -303,7 +294,7 @@ macro_rules! impl_from_i32 {
 }
 
 macro_rules! impl_into_i32 {
-    ($($variant:pat, $idx:expr, $_:expr;)*) => {
+    ($($variant:pat, $idx:expr, $_name:expr, $_field_name:expr;)*) => {
         impl From<ParameterType> for i32 {
             fn from(x: ParameterType) -> i32 {
                 match x {
@@ -314,9 +305,22 @@ macro_rules! impl_into_i32 {
     };
 }
 
+macro_rules! impl_get_ref {
+    ($($variant:pat, $_:expr, $_name:expr, $field_name:ident;)*) => {
+        impl RawParameters {
+            fn get_ref(&self, x: ParameterType) -> &AtomicFloat {
+                match x {
+                    $($variant => &self.$field_name,)*
+                }
+            }
+        }
+    };
+}
+
 table! {impl_from_i32}
 table! {impl_into_i32}
 table! {impl_display}
+table! {impl_get_ref}
 
 impl_plugin_parameters! {RawParameters, ParameterType}
 
