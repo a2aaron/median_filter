@@ -11,6 +11,7 @@ use vst::{
     util::AtomicFloat,
 };
 
+use common::{ease_in_expo, make_strings};
 struct Clipper {
     params: Arc<RawParameters>,
 }
@@ -102,14 +103,6 @@ impl From<&RawParameters> for Parameters {
     }
 }
 
-pub fn ease_in_expo(x: f32) -> f32 {
-    if x <= 0.0 {
-        0.0
-    } else {
-        (2.0f32.powf(10.0 * x) - 1.0) / (2.0f32.powf(10.0) - 1.0)
-    }
-}
-
 /// The raw parameter values that a host DAW will set and modify.
 /// These are unscaled and are always in the [0.0, 1.0] range
 pub struct RawParameters {
@@ -127,10 +120,6 @@ pub enum ParameterType {
     ClipLevel,
     PostAmp,
     WetDry,
-}
-
-fn make_strings(value: f32, label: &str) -> (String, String) {
-    (format!("{:.2}", value), label.to_string())
 }
 
 macro_rules! table {

@@ -12,6 +12,8 @@ use vst::{
     util::AtomicFloat,
 };
 
+use common::make_strings;
+
 struct MedianFilter {
     params: Arc<RawParameters>,
     left_filter: Filter<f32>,
@@ -139,10 +141,6 @@ pub struct RawParameters {
 pub enum ParameterType {
     WindowSize,
     WetDry,
-}
-
-fn make_strings(value: f32, label: &str) -> (String, String) {
-    (format!("{:.2}", value), label.to_string())
 }
 
 macro_rules! table {
