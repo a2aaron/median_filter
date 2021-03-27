@@ -128,10 +128,10 @@ macro_rules! table {
         //  RawParameter identifier, ParameterType identifier
             RawParameters,          ParameterType;
         //  variant                     idx    name            field_name    default    strings
-            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0,       |x: f32| make_strings(x * 100.0, "%");
-            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7,       |x: f32| make_strings(x, "");
-            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level,   0.6,       |x: f32| make_strings(x * 100.0, "%");
-            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8,       |x: f32| make_strings(x * 100.0, "% Wet");
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0,       |x: f32| make_strings(x * 100.0, "% Wet");
+            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7,       |x: f32| make_strings(x * 100.0, "%");
+            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level,   0.6,       |x: f32| make_strings(x, "");
+            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8,       |x: f32| make_strings(x * 100.0, "%");
         }
     };
 }
