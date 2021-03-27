@@ -158,16 +158,6 @@ impl RawParameters {
             ParameterType::WetDry => make_strings(params.wet_dry * 100.0, "% Wet"),
         }
     }
-
-    fn default(host: HostCallback) -> Self {
-        RawParameters {
-            clip_level: AtomicFloat::new(0.6),   // Clip at 0.06ish
-            pre_amplify: AtomicFloat::new(0.7),  // 200%
-            post_amplify: AtomicFloat::new(0.8), // 100%
-            wet_dry: AtomicFloat::new(1.0),      // 100% wet
-            host,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,10 +172,10 @@ macro_rules! table {
     ($macro:ident) => {
         $macro! {
         //  variant                     idx    name            field_name
-            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry ;
-            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify ;
-            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level ;
-            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify ;
+            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0;
+            ParameterType::PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7;
+            ParameterType::ClipLevel,   2,     "Clip Level",   clip_level,   0.6;
+            ParameterType::PostAmp,     3,     "Post-Amplify", post_amplify, 0.8;
         }
     };
 }
@@ -268,7 +258,7 @@ macro_rules! impl_plugin_parameters {
 }
 
 macro_rules! impl_display {
-     ($($variant:pat, $idx:expr, $name:expr, $_:expr;)*) => {
+     ($($variant:pat, $idx:expr, $name:expr, $_:expr, $_default:expr;)*) => {
         impl std::fmt::Display for ParameterType {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
@@ -280,7 +270,7 @@ macro_rules! impl_display {
 }
 
 macro_rules! impl_from_i32 {
-    ($($variant:expr, $idx:expr, $_name:expr, $_field_name:expr;)*) => {
+    ($($variant:expr, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
         impl TryFrom<i32> for ParameterType {
             type Error = ();
             fn try_from(x: i32) -> Result<Self, Self::Error> {
@@ -294,7 +284,7 @@ macro_rules! impl_from_i32 {
 }
 
 macro_rules! impl_into_i32 {
-    ($($variant:pat, $idx:expr, $_name:expr, $_field_name:expr;)*) => {
+    ($($variant:pat, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
         impl From<ParameterType> for i32 {
             fn from(x: ParameterType) -> i32 {
                 match x {
@@ -306,7 +296,7 @@ macro_rules! impl_into_i32 {
 }
 
 macro_rules! impl_get_ref {
-    ($($variant:pat, $_:expr, $_name:expr, $field_name:ident;)*) => {
+    ($($variant:pat, $_:expr, $_name:expr, $field_name:ident, $_default:expr;)*) => {
         impl RawParameters {
             fn get_ref(&self, x: ParameterType) -> &AtomicFloat {
                 match x {
@@ -317,10 +307,37 @@ macro_rules! impl_get_ref {
     };
 }
 
+macro_rules! impl_get_default {
+    ($($variant:pat, $_:expr, $_name:expr, $_field_name:ident, $default:expr;)*) => {
+        impl RawParameters {
+            fn get_default(x: ParameterType) -> f32 {
+                match x {
+                    $($variant => $default,)*
+                }
+            }
+        }
+    };
+}
+
+macro_rules! impl_default {
+    ($($variant:pat, $_:expr, $_name:expr, $field_name:ident, $default:expr;)*) => {
+        impl RawParameters {
+            fn default(host: HostCallback) -> Self {
+                RawParameters {
+                    $($field_name: AtomicFloat::new($default),)*
+                    host,
+                }
+            }
+        }
+    };
+}
+
 table! {impl_from_i32}
 table! {impl_into_i32}
 table! {impl_display}
 table! {impl_get_ref}
+table! {impl_default}
+table! {impl_get_default}
 
 impl_plugin_parameters! {RawParameters, ParameterType}
 
