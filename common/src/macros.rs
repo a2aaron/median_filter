@@ -12,8 +12,9 @@
 #[macro_export]
 macro_rules! impl_plugin_parameters {
     ($raw_parameters: ident, $parameter_type: ident) => {
-        impl PluginParameters for $raw_parameters {
+        impl vst::plugin::PluginParameters for $raw_parameters {
             fn get_parameter_label(&self, index: i32) -> String {
+                use std::convert::TryFrom;
                 if let Ok(parameter) = $parameter_type::try_from(index) {
                     self.get_strings(parameter).1
                 } else {
@@ -22,6 +23,7 @@ macro_rules! impl_plugin_parameters {
             }
 
             fn get_parameter_text(&self, index: i32) -> String {
+                use std::convert::TryFrom;
                 if let Ok(parameter) = $parameter_type::try_from(index) {
                     self.get_strings(parameter).0
                 } else {
@@ -30,6 +32,7 @@ macro_rules! impl_plugin_parameters {
             }
 
             fn get_parameter_name(&self, index: i32) -> String {
+                use std::convert::TryFrom;
                 if let Ok(param) = $parameter_type::try_from(index) {
                     param.to_string()
                 } else {
@@ -38,6 +41,7 @@ macro_rules! impl_plugin_parameters {
             }
 
             fn get_parameter(&self, index: i32) -> f32 {
+                use std::convert::TryFrom;
                 if let Ok(parameter) = $parameter_type::try_from(index) {
                     self.get(parameter)
                 } else {
@@ -46,6 +50,7 @@ macro_rules! impl_plugin_parameters {
             }
 
             fn set_parameter(&self, index: i32, value: f32) {
+                use std::convert::TryFrom;
                 if let Ok(parameter) = $parameter_type::try_from(index) {
                     // This is needed because some VST hosts, such as Ableton, echo a
                     // parameter change back to the plugin. This causes issues such as
@@ -62,6 +67,7 @@ macro_rules! impl_plugin_parameters {
             }
 
             fn can_be_automated(&self, index: i32) -> bool {
+                use std::convert::TryFrom;
                 $parameter_type::try_from(index).is_ok()
             }
 
@@ -74,8 +80,8 @@ macro_rules! impl_plugin_parameters {
 
 #[macro_export]
 macro_rules! impl_display {
-     ($($variant:pat, $idx:expr, $name:expr, $_:expr, $_default:expr;)*) => {
-        impl std::fmt::Display for ParameterType {
+     ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $idx:expr, $name:expr, $_:expr, $_default:expr;)*) => {
+        impl std::fmt::Display for $parameter_type {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $($variant => write!(f, $name),)*
@@ -87,8 +93,8 @@ macro_rules! impl_display {
 
 #[macro_export]
 macro_rules! impl_from_i32 {
-    ($($variant:expr, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
-        impl TryFrom<i32> for ParameterType {
+    ($raw_parameters: ident, $parameter_type: ident; $($variant:expr, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
+        impl std::convert::TryFrom<i32> for $parameter_type {
             type Error = ();
             fn try_from(x: i32) -> Result<Self, Self::Error> {
                 match x {
@@ -102,9 +108,9 @@ macro_rules! impl_from_i32 {
 
 #[macro_export]
 macro_rules! impl_into_i32 {
-    ($($variant:pat, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
-        impl From<ParameterType> for i32 {
-            fn from(x: ParameterType) -> i32 {
+    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $idx:expr, $_name:expr, $_field_name:expr, $_default:expr;)*) => {
+        impl std::convert::From<$parameter_type> for i32 {
+            fn from(x: $parameter_type) -> i32 {
                 match x {
                     $($variant => $idx,)*
                 }
@@ -115,9 +121,9 @@ macro_rules! impl_into_i32 {
 
 #[macro_export]
 macro_rules! impl_get_ref {
-    ($($variant:pat, $_:expr, $_name:expr, $field_name:ident, $_default:expr;)*) => {
-        impl RawParameters {
-            fn get_ref(&self, x: ParameterType) -> &AtomicFloat {
+    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $_:expr, $_name:expr, $field_name:ident, $_default:expr;)*) => {
+        impl $raw_parameters {
+            fn get_ref(&self, x: $parameter_type) -> &vst::util::AtomicFloat {
                 match x {
                     $($variant => &self.$field_name,)*
                 }
@@ -128,9 +134,9 @@ macro_rules! impl_get_ref {
 
 #[macro_export]
 macro_rules! impl_get_default {
-    ($($variant:pat, $_:expr, $_name:expr, $_field_name:ident, $default:expr;)*) => {
-        impl RawParameters {
-            fn get_default(x: ParameterType) -> f32 {
+    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $_:expr, $_name:expr, $_field_name:ident, $default:expr;)*) => {
+        impl $raw_parameters {
+            fn get_default(x: $parameter_type) -> f32 {
                 match x {
                     $($variant => $default,)*
                 }
@@ -141,11 +147,11 @@ macro_rules! impl_get_default {
 
 #[macro_export]
 macro_rules! impl_default {
-    ($($variant:pat, $_:expr, $_name:expr, $field_name:ident, $default:expr;)*) => {
-        impl RawParameters {
-            fn default(host: HostCallback) -> Self {
-                RawParameters {
-                    $($field_name: AtomicFloat::new($default),)*
+    ($raw_parameters: ident, $parameter_type: ident; $($variant:pat, $_:expr, $_name:expr, $field_name:ident, $default:expr;)*) => {
+        impl $raw_parameters {
+            fn default(host: vst::plugin::HostCallback) -> Self {
+                $raw_parameters {
+                    $($field_name: vst::util::AtomicFloat::new($default),)*
                     host,
                 }
             }
