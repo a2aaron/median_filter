@@ -3,7 +3,6 @@ extern crate vst;
 
 use std::sync::Arc;
 
-use log::{info, LevelFilter};
 use median::heap::Filter;
 use variant_count::VariantCount;
 use vst::{
@@ -32,14 +31,7 @@ impl Plugin for MedianFilter {
     }
 
     fn init(&mut self) {
-        let result = simple_logging::log_to_file("median_filter.log", LevelFilter::Info);
-        if let Err(err) = result {
-            println!("Couldn't start logging! {}", err);
-        }
-        info!("Begin VST log");
-
         let params = Parameters::from(self.params.as_ref());
-
         self.last_window_size = params.window_size;
     }
 
@@ -73,7 +65,7 @@ impl Plugin for MedianFilter {
     // Output audio given the current state of the VST
     fn process(&mut self, buffer: &mut AudioBuffer<f32>) {
         self.reset_if_changed();
-
+        let dry_wet = self.params.dry_wet.get();
         let num_samples = buffer.samples();
 
         let (inputs, mut outputs) = buffer.split();
@@ -82,11 +74,12 @@ impl Plugin for MedianFilter {
 
         for i in 0..num_samples {
             self.left_filter.consume(left_input[i]);
-            if self.left_filter.is_empty() != 0 {
-                left_output[i] = self.left_filter.median();
+            let out = if self.left_filter.is_empty() != 0 {
+                self.left_filter.median()
             } else {
-                left_output[i] = 0.0;
-            }
+                0.0
+            };
+            left_output[i] = left_input[i] * (1.0 - dry_wet) + out * dry_wet;
         }
 
         let right_input = &inputs[1];
@@ -94,11 +87,12 @@ impl Plugin for MedianFilter {
 
         for i in 0..num_samples {
             self.right_filter.consume(right_input[i]);
-            if self.right_filter.is_empty() != 0 {
-                right_output[i] = self.right_filter.median();
+            let out = if self.right_filter.is_empty() != 0 {
+                self.right_filter.median()
             } else {
-                right_output[i] = 0.0;
-            }
+                0.0
+            };
+            right_output[i] = right_input[i] * (1.0 - dry_wet) + out * dry_wet;
         }
     }
 
@@ -137,12 +131,14 @@ impl MedianFilter {
 
 struct Parameters {
     window_size: usize,
+    dry_wet: f32,
 }
 
 impl From<&RawParameters> for Parameters {
     fn from(params: &RawParameters) -> Self {
         Parameters {
             window_size: ((params.window_size.get() * 100.0) as usize).max(1),
+            dry_wet: params.dry_wet.get(),
         }
     }
 }
@@ -151,12 +147,14 @@ impl From<&RawParameters> for Parameters {
 /// These are unscaled and are always in the [0.0, 1.0] range
 pub struct RawParameters {
     window_size: AtomicFloat,
+    dry_wet: AtomicFloat,
 }
 
 impl PluginParameters for RawParameters {
     fn get_parameter_label(&self, index: i32) -> String {
         match index.into() {
             ParameterType::WindowSize => "Samples".to_string(),
+            ParameterType::DryWet => "%".to_string(),
             ParameterType::Error => "".to_string(),
         }
     }
@@ -165,6 +163,7 @@ impl PluginParameters for RawParameters {
         let params = Parameters::from(self);
         match index.into() {
             ParameterType::WindowSize => format!("{}", params.window_size),
+            ParameterType::DryWet => format!("{:.2}", params.dry_wet * 100.0),
             ParameterType::Error => "".to_string(),
         }
     }
@@ -172,6 +171,7 @@ impl PluginParameters for RawParameters {
     fn get_parameter_name(&self, index: i32) -> String {
         match index.into() {
             ParameterType::WindowSize => "Window Size".to_string(),
+            ParameterType::DryWet => "Dry/Wet Mix".to_string(),
             ParameterType::Error => "".to_string(),
         }
     }
@@ -179,6 +179,7 @@ impl PluginParameters for RawParameters {
     fn get_parameter(&self, index: i32) -> f32 {
         match index.into() {
             ParameterType::WindowSize => self.window_size.get(),
+            ParameterType::DryWet => self.dry_wet.get(),
             ParameterType::Error => 0.0,
         }
     }
@@ -186,6 +187,7 @@ impl PluginParameters for RawParameters {
     fn set_parameter(&self, index: i32, value: f32) {
         match index.into() {
             ParameterType::WindowSize => self.window_size.set(value),
+            ParameterType::DryWet => self.dry_wet.set(value),
             ParameterType::Error => (),
         }
     }
@@ -202,7 +204,8 @@ impl PluginParameters for RawParameters {
 impl Default for RawParameters {
     fn default() -> Self {
         RawParameters {
-            window_size: AtomicFloat::new(1.0),
+            window_size: AtomicFloat::new(0.5),
+            dry_wet: AtomicFloat::new(0.5),
         }
     }
 }
@@ -211,6 +214,7 @@ impl Default for RawParameters {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, VariantCount)]
 pub enum ParameterType {
     WindowSize,
+    DryWet,
     Error,
 }
 
@@ -219,6 +223,7 @@ impl From<i32> for ParameterType {
         use ParameterType::*;
         match i {
             0 => WindowSize,
+            1 => DryWet,
             _ => Error,
         }
     }
