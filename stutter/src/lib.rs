@@ -179,22 +179,15 @@ impl From<&RawParameters> for Parameters {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ParameterType {
-    Trigger,
-    BufferSize,
-    WetDry,
-}
-
 macro_rules! table {
     ($macro:ident) => {
         $macro! {
         //  RawParameter identifier, ParameterType identifier
             RawParameters,          ParameterType;
-        //  variant                     idx    name            field_name    default    strings
-            ParameterType::WetDry,      0,     "Wet/Dry",      wet_dry,      1.0,       |x: f32| make_strings(x * 100.0, "%");
-            ParameterType::Trigger,     1,     "Trigger",      trigger,      0.0,       |x: bool| if x {("ON".to_string(), "".to_string())} else {("OFF".to_string(), "".to_string())};
-            ParameterType::BufferSize,  2,     "Buffer Size",  buffer_size,  0.5,       |x: usize| (format!("{}", x), "Samples".to_string());
+        //  variant      idx    name            field_name    default    strings
+            WetDry,      0,     "Wet/Dry",      wet_dry,      1.0,       |x: f32| make_strings(x * 100.0, "%");
+            Trigger,     1,     "Trigger",      trigger,      0.0,       |x: bool| if x {("ON".to_string(), "".to_string())} else {("OFF".to_string(), "".to_string())};
+            BufferSize,  2,     "Buffer Size",  buffer_size,  0.5,       |x: usize| (format!("{}", x), "Samples".to_string());
         }
     };
 }

@@ -81,11 +81,11 @@ macro_rules! impl_plugin_parameters {
 #[macro_export]
 macro_rules! impl_display {
      ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl std::fmt::Display for $parameter_type {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
-                    $($variant => write!(f, $name),)*
+                    $($parameter_type::$variant => write!(f, $name),)*
                 }
             }
         }
@@ -95,12 +95,12 @@ macro_rules! impl_display {
 #[macro_export]
 macro_rules! impl_from_i32 {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:expr, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl std::convert::TryFrom<i32> for $parameter_type {
             type Error = ();
             fn try_from(x: i32) -> Result<Self, Self::Error> {
                 match x {
-                    $($idx => Ok($variant),)*
+                    $($idx => Ok($parameter_type::$variant),)*
                     _ => Err(()),
                 }
             }
@@ -111,11 +111,11 @@ macro_rules! impl_from_i32 {
 #[macro_export]
 macro_rules! impl_into_i32 {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl std::convert::From<$parameter_type> for i32 {
             fn from(x: $parameter_type) -> i32 {
                 match x {
-                    $($variant => $idx,)*
+                    $($parameter_type::$variant => $idx,)*
                 }
             }
         }
@@ -125,11 +125,11 @@ macro_rules! impl_into_i32 {
 #[macro_export]
 macro_rules! impl_get_ref {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             fn get_ref(&self, x: $parameter_type) -> &vst::util::AtomicFloat {
                 match x {
-                    $($variant => &self.$field_name,)*
+                    $($parameter_type::$variant => &self.$field_name,)*
                 }
             }
         }
@@ -139,11 +139,11 @@ macro_rules! impl_get_ref {
 #[macro_export]
 macro_rules! impl_get_default {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             fn get_default(x: $parameter_type) -> f32 {
                 match x {
-                    $($variant => $default,)*
+                    $($parameter_type::$variant => $default,)*
                 }
             }
         }
@@ -153,7 +153,7 @@ macro_rules! impl_get_default {
 #[macro_export]
 macro_rules! impl_default {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             fn default(host: vst::plugin::HostCallback) -> Self {
                 $raw_parameters {
@@ -188,14 +188,14 @@ macro_rules! impl_get_set {
 #[macro_export]
 macro_rules! impl_get_strings {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         impl $raw_parameters {
             /// Returns a user-facing text output for the given parameter. This is broken
             /// into a tuple consisting of (`value`, `units`)
             fn get_strings(&self, parameter: $parameter_type) -> (String, String) {
                 let params = Parameters::from(self);
                 match parameter {
-                    $($variant => $string(params.$field_name),)*
+                    $($parameter_type::$variant => $string(params.$field_name),)*
                 }
             }
         }
@@ -205,7 +205,7 @@ macro_rules! impl_get_strings {
 #[macro_export]
 macro_rules! generate_raw_params {
     ($raw_parameters: ident, $parameter_type: ident;
-     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
         /// The raw parameter values that a host DAW will set and modify.
         /// These are unscaled and are always in the [0.0, 1.0] range
         pub struct $raw_parameters {
@@ -217,11 +217,24 @@ macro_rules! generate_raw_params {
 }
 
 #[macro_export]
+macro_rules! generate_parameter_type {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:ident, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+        /// The list of parameters that exist.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum $parameter_type {
+            $($variant,)*
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! impl_all {
     ($raw_parameters: ident, $parameter_type: ident, $table: ident) => {
         impl_plugin_parameters! {$raw_parameters, $parameter_type}
         impl_get_set! {$raw_parameters, $parameter_type}
         $table! {generate_raw_params}
+        $table! {generate_parameter_type}
         $table! {impl_from_i32}
         $table! {impl_into_i32}
         $table! {impl_display}
