@@ -203,10 +203,25 @@ macro_rules! impl_get_strings {
 }
 
 #[macro_export]
+macro_rules! generate_raw_params {
+    ($raw_parameters: ident, $parameter_type: ident;
+     $($variant:pat, $idx:expr, $name:expr, $field_name:ident, $default:expr, $string:expr;)*) => {
+        /// The raw parameter values that a host DAW will set and modify.
+        /// These are unscaled and are always in the [0.0, 1.0] range
+        pub struct $raw_parameters {
+            $($field_name: AtomicFloat,)*
+            /// The host callback, used for communicating with the VST host
+            pub host: vst::plugin::HostCallback,
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! impl_all {
     ($raw_parameters: ident, $parameter_type: ident, $table: ident) => {
         impl_plugin_parameters! {$raw_parameters, $parameter_type}
         impl_get_set! {$raw_parameters, $parameter_type}
+        $table! {generate_raw_params}
         $table! {impl_from_i32}
         $table! {impl_into_i32}
         $table! {impl_display}

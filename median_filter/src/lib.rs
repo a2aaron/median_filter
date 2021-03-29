@@ -129,14 +129,6 @@ impl From<&RawParameters> for Parameters {
     }
 }
 
-/// The raw parameter values that a host DAW will set and modify.
-/// These are unscaled and are always in the [0.0, 1.0] range
-pub struct RawParameters {
-    window_size: AtomicFloat,
-    wet_dry: AtomicFloat,
-    host: HostCallback,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterType {
     WindowSize,

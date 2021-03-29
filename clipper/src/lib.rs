@@ -103,17 +103,6 @@ impl From<&RawParameters> for Parameters {
     }
 }
 
-/// The raw parameter values that a host DAW will set and modify.
-/// These are unscaled and are always in the [0.0, 1.0] range
-pub struct RawParameters {
-    clip_level: AtomicFloat,
-    pre_amplify: AtomicFloat,
-    post_amplify: AtomicFloat,
-    wet_dry: AtomicFloat,
-    /// The host callback, used for communicating with the VST host
-    pub host: HostCallback,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterType {
     PreAmp,
