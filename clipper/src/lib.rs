@@ -97,8 +97,8 @@ impl From<&RawParameters> for Parameters {
         Parameters {
             wet_dry: params.wet_dry.get(),
             clip_level: ease_in_expo(params.clip_level.get()),
-            pre_amplify: ease_in_expo(params.pre_amplify.get()) * 16.0,
-            post_amplify: ease_in_expo(params.post_amplify.get()) * 4.0,
+            pre_amplify: params.pre_amplify.get() * 16.0,
+            post_amplify: params.post_amplify.get() * 4.0,
         }
     }
 }
@@ -108,11 +108,11 @@ macro_rules! table {
         $macro! {
         //  RawParameter identifier, ParameterType identifier
             RawParameters,          ParameterType;
-        //  variant      idx    name            field_name    default    strings
-            WetDry,      0,     "Wet/Dry",      wet_dry,      1.0,       |x: f32| make_strings(x * 100.0, "% Wet");
-            PreAmp,      1,     "Pre-Amplify",  pre_amplify,  0.7,       |x: f32| make_strings(x * 100.0, "%");
-            ClipLevel,   2,     "Clip Level",   clip_level,   0.6,       |x: f32| make_strings(x, "");
-            PostAmp,     3,     "Post-Amplify", post_amplify, 0.8,       |x: f32| make_strings(x * 100.0, "%");
+        //  variant      field_name     name             idx  default    strings
+            WetDry,      wet_dry,       "Wet/Dry",       0,   1.0,       |x: f32| make_strings(x * 100.0, "% Wet");
+            PreAmp,      pre_amplify,   "Pre-Amplify",   1,   0.125,     |x: f32| make_strings(x * 100.0, "%");
+            ClipLevel,   clip_level,    "Clip Level",    2,   0.5,       |x: f32| make_strings(x, "");
+            PostAmp,     post_amplify,  "Post-Amplify",  3,   0.25,      |x: f32| make_strings(x * 100.0, "%");
         }
     };
 }

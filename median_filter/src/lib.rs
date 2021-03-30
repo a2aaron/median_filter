@@ -134,9 +134,9 @@ macro_rules! table {
         $macro! {
         //  RawParameter identifier, ParameterType identifier
             RawParameters,           ParameterType;
-        //  variant      idx    name            field_name    default    strings
-            WetDry,      0,     "Wet/Dry",      wet_dry,      0.5,       |x: f32| make_strings(x * 100.0, "% Wet");
-            WindowSize,  1,     "Window Size",  window_size,  0.5,       |x: usize| (format!("{}", x), " Samples".to_string());
+        //  variant      field_name    name            idx  default  strings
+            WetDry,      wet_dry,      "Wet/Dry",      0,   0.5,     |x: f32| make_strings(x * 100.0, "% Wet");
+            WindowSize,  window_size,  "Window Size",  1,   0.5,     |x: usize| (format!("{}", x), " Samples".to_string());
         }
     };
 }
